@@ -1,99 +1,113 @@
+// 251RDB074 Ēriks Boka
+// 241RMB016 Sofja Spicina
 
-//251RDB074 Ēriks Boka 7
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.Scanner;
 
 public class Main {
-    static Scanner sc = new Scanner(System.in);
 
-    public static void main(String[] args) throws Exception {
-        run();
-    }
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        String choiseStr;
+        String sourceFile, resultFile, firstFile, secondFile;
 
-    static void run() {
-        String action = sc.nextLine();
-        switch (action) {
-            case "comp":
-                comp();
-                break;
-            case "decomp":
-                decomp();
-                break;
-            case "size":
-                size();
-                break;
-            case "equal":
-                equal();
-                break;
-            case "about":
-                System.out.println("251RDB074 Ēriks Boka 7");
-                break;
-            default:
-                break;
+        loop: while (true) {
+
+            choiseStr = sc.next();
+
+            switch (choiseStr) {
+                case "comp":
+                    System.out.print("source file name: ");
+                    sourceFile = sc.next();
+                    System.out.print("archive name: ");
+                    resultFile = sc.next();
+                    comp(sourceFile, resultFile);
+                    break;
+                case "decomp":
+                    System.out.print("archive name: ");
+                    sourceFile = sc.next();
+                    System.out.print("file name: ");
+                    resultFile = sc.next();
+                    decomp(sourceFile, resultFile);
+                    break;
+                case "size":
+                    System.out.print("file name: ");
+                    sourceFile = sc.next();
+                    size(sourceFile);
+                    break;
+                case "equal":
+                    System.out.print("first file name: ");
+                    firstFile = sc.next();
+                    System.out.print("second file name: ");
+                    secondFile = sc.next();
+                    System.out.println(equal(firstFile, secondFile));
+                    break;
+                case "about":
+                    about();
+                    break;
+                case "exit":
+                    break loop;
+            }
         }
+
         sc.close();
     }
 
-    static void comp() {
-        System.out.print("source file name:");
-        String sourceName = sc.nextLine();
+    public static void comp(String sourceFile, String resultFile) {
 
-        System.out.println("archive name:");
-        String archiveName = sc.nextLine();
+    }
 
-        
-        // Map<Character, Integer> lineLetterAmountMap = new HashMap<>();
+    public static void decomp(String sourceFile, String resultFile) {
+
+    }
+
+    public static void size(String sourceFile) {
         try {
-            BufferedReader br = new BufferedReader(new FileReader(sourceName));
-            BufferedWriter bw = new BufferedWriter(new FileWriter(archiveName));
-
-            for(String line : br.lines().toList()) {
-                
-                char[] characters = line.toCharArray();
-                int letterCounter = 0;
-
-                for (int i = 0; i < line.length(); i++) {
-                    if (characters[i] == characters[i+=2]) {
-                        letterCounter++;
-                    }
-                }
-                // if, while going through the line - more than 2 letters are next to each other:
-                // ++letterCounter
-                // to lineLetterAmountMap add (Character)'letter' and (Integer)letterCounter
-                // with BufferedWriter rewrite the same line but with letterCounter+Letter inside a word.
-            }
-        } catch (IOException e) {
-            e.printStackTrace();
+            FileInputStream f = new FileInputStream(sourceFile);
+            System.out.println("size: " + f.available());
+            f.close();
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
         }
 
-        // COMPRESS
     }
 
-    static void decomp() {
-        System.out.println("archive name:");
-        String archiveName = sc.nextLine();
+    public static boolean equal(String firstFile, String secondFile) {
+        try {
+            FileInputStream f1 = new FileInputStream(firstFile);
+            FileInputStream f2 = new FileInputStream(secondFile);
+            int k1, k2;
+            byte[] buf1 = new byte[1000];
+            byte[] buf2 = new byte[1000];
+            do {
+                k1 = f1.read(buf1);
+                k2 = f2.read(buf2);
+                if (k1 != k2) {
+                    f1.close();
+                    f2.close();
+                    return false;
+                }
+                for (int i = 0; i < k1; i++) {
+                    if (buf1[i] != buf2[i]) {
+                        f1.close();
+                        f2.close();
+                        return false;
+                    }
 
-        System.out.print("file name:");
-        String sourceName = sc.nextLine();
-        
-        // DECOMPRESS
-
-        // if letterCounter+Letter case is found - turn it into Letter*letterCounter case
+                }
+            } while (!(k1 == -1 && k2 == -1));
+            f1.close();
+            f2.close();
+            return true;
+        } catch (IOException ex) {
+            System.out.println(ex.getMessage());
+            return false;
+        }
     }
 
-    static void size() {
-        int fileSizeInBytes = 0;
-        
+    public static void about() {
+        System.out.println("251RDB074 Ēriks Boka");
+        System.out.println("241RMB016 Sofja Spicina");
     }
-
-    static void equal() {
-
-    }
-    // Hello world this is a git test
 }
