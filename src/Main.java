@@ -75,7 +75,6 @@ public class Main {
         // COMPRESS
     }
 
-
     static void decomp() {
         System.out.println("archive name:");
         String archiveName = sc.nextLine();
@@ -96,4 +95,5 @@ public class Main {
     static void equal() {
 
     }
+    // Hello world this is a git test
 }
