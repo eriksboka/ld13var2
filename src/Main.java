@@ -56,6 +56,54 @@ public class Main {
 
     public static void comp(String sourceFile, String resultFile) {
 
+//         FUNCTION compressRLE(InputString)
+//     // InputString is the HTML content to be compressed.
+//     // We will build the CompressedOutput character by character.
+
+//     IF InputString IS NULL OR length(InputString) == 0 THEN
+//         RETURN InputString
+//     END IF
+
+//     // Initialize the structure that will hold the compressed data.
+//     // In Java, you'd use a StringBuilder (part of java.lang) or a char array.
+//     Initialize CompressedOutput
+
+//     // Initialize variables to track the current run
+//     SET CurrentCharacter = first character of InputString
+//     SET RunLength = 1
+
+//     // Start iteration from the second character (index 1)
+//     FOR Index FROM 1 TO length(InputString) - 1 DO
+//         SET NextCharacter = character at Index in InputString
+
+//         IF NextCharacter IS EQUAL TO CurrentCharacter THEN
+//             // Case 1: The run continues
+//             INCREMENT RunLength
+//         ELSE
+//             // Case 2: The run has ended
+
+//             // A. Append the run length (count) to the output
+//             //    (You'll need a way to convert the integer RunLength to a string/char)
+//             APPEND RunLength TO CompressedOutput
+
+//             // B. Append the character to the output
+//             APPEND CurrentCharacter TO CompressedOutput
+
+//             // C. Start a new run
+//             SET CurrentCharacter = NextCharacter
+//             SET RunLength = 1
+//         END IF
+//     END FOR
+
+//     // --- Handling the Final Run ---
+//     // The loop finishes after processing the last character, but the final
+//     // run's length and character haven't been appended yet.
+
+//     APPEND RunLength TO CompressedOutput
+//     APPEND CurrentCharacter TO CompressedOutput
+
+//     RETURN CompressedOutput
+// END FUNCTION
     }
 
     public static void decomp(String sourceFile, String resultFile) {
