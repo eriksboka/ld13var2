@@ -207,125 +207,130 @@ public class Main {
 
     public static void decomp(String sourceFile, String resultFile) {
         try (FileInputStream fis = new FileInputStream(sourceFile);
-            FileOutputStream fos = new FileOutputStream(resultFile)) {
+             FileOutputStream fos = new FileOutputStream(resultFile)) {
 
-        // #region 1. Read Header (Frequency Table)
+            // #region 1. Read Header (Frequency Table)
 
-        // Read frequency table size (2 bytes)
-        int sizeHigh = fis.read();
-        int sizeLow = fis.read();
-        if (sizeHigh < 0 || sizeLow < 0) {
-            System.err.println("Error: Corrupt file (cannot read frequency size).");
-            return;
-        }
-        int frequencyTableSize = (sizeHigh << 8) | sizeLow;
-
-        // Read frequency table
-        Map<Character, Integer> frequencies = new LinkedHashMap<>();
-        for (int i = 0; i < frequencyTableSize; i++) {
-            // Read Character (2 bytes)
-            int charHigh = fis.read();
-            int charLow = fis.read();
-            if (charHigh < 0 || charLow < 0) {
-                System.err.println("Error: Corrupt file (cannot read symbol).");
+            // Read frequency table size (2 bytes)
+            int sizeHigh = fis.read();
+            int sizeLow = fis.read();
+            if (sizeHigh < 0 || sizeLow < 0) {
+                System.err.println("Error: Corrupt file (cannot read frequency size).");
                 return;
             }
-            char symbol = (char) ((charHigh << 8) | charLow);
+            int frequencyTableSize = (sizeHigh << 8) | sizeLow;
 
-            // Read Frequency (4 bytes)
-            int freqB3 = fis.read();
-            int freqB2 = fis.read();
-            int freqB1 = fis.read();
-            int freqB0 = fis.read();
-            if (freqB3 < 0 || freqB2 < 0 || freqB1 < 0 || freqB0 < 0) {
-                System.err.println("Error: Corrupt file (cannot read frequency value).");
+            // Read frequency table
+            Map<Character, Integer> frequencies = new LinkedHashMap<>();
+            for (int i = 0; i < frequencyTableSize; i++) {
+                // Read Character (2 bytes)
+                int charHigh = fis.read();
+                int charLow = fis.read();
+                if (charHigh < 0 || charLow < 0) {
+                    System.err.println("Error: Corrupt file (cannot read symbol).");
+                    return;
+                }
+                char symbol = (char) ((charHigh << 8) | charLow);
+
+                // Read Frequency (4 bytes)
+                int freqB3 = fis.read();
+                int freqB2 = fis.read();
+                int freqB1 = fis.read();
+                int freqB0 = fis.read();
+                if (freqB3 < 0 || freqB2 < 0 || freqB1 < 0 || freqB0 < 0) {
+                    System.err.println("Error: Corrupt file (cannot read frequency value).");
+                    return;
+                }
+                // Construct the integer from 4 bytes (Big-endian)
+                int frequency = (freqB3 << 24) | (freqB2 << 16) | (freqB1 << 8) | freqB0;
+
+                frequencies.put(symbol, frequency);
+            }
+            // #endregion
+
+            // #region 2. Read Padding and Encoded Data
+
+            // Read number of padding bits (1 byte)
+            int padding = fis.read();
+            if (padding < 0) {
+                // This means the file ended before the body, typically if the original file was truly empty.
+                if (frequencyTableSize == 0) {
+                    return;
+                }
+                System.err.println("Error: Corrupt file (cannot read padding).");
                 return;
             }
-            // Construct the integer from 4 bytes (Big-endian)
-            int frequency = (freqB3 << 24) | (freqB2 << 16) | (freqB1 << 8) | freqB0;
 
-            frequencies.put(symbol, frequency);
-        }
-        // #endregion
+            // Read the rest of the file (encoded bytes)
+            List<Byte> encodedBytes = new ArrayList<>();
+            int byteRead;
+            while ((byteRead = fis.read()) != -1) {
+                encodedBytes.add((byte) byteRead);
+            }
 
-        // #region 2. Read Padding and Encoded Data
+            // Convert bytes to binary string
+            StringBuilder encodedData = new StringBuilder();
+            for (int i = 0; i < encodedBytes.size(); i++) {
+                byte b = encodedBytes.get(i);
+                // Convert byte to 8-bit binary string, ensuring leading zeros are kept.
+                // b & 0xFF ensures the byte is treated as an unsigned value (0-255).
+                String byteStr = String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0');
 
-        // Read number of padding bits (1 byte)
-        int padding = fis.read();
-        if (padding < 0) {
-            System.err.println("Error: Corrupt file (cannot read padding).");
-            return;
-        }
+                if (i == encodedBytes.size() - 1 && padding > 0) {
+                    // Remove the padding zeros that were added to the last byte during compression
+                    if (byteStr.length() >= padding) {
+                        byteStr = byteStr.substring(0, byteStr.length() - padding);
+                    }
+                }
+                encodedData.append(byteStr);
+            }
+            String compressedBits = encodedData.toString();
+            // #endregion
 
-        // If the original file was empty, we return immediately.
-        if (frequencyTableSize == 0) {
-            return;
-        }
+            // #region 3. Rebuild Huffman Codes and Decode
 
-        // Read the rest of the file (encoded bytes)
-        List<Byte> encodedBytes = new ArrayList<>();
-        int byteRead;
-        while ((byteRead = fis.read()) != -1) {
-            encodedBytes.add((byte) byteRead);
-        }
+            // Rebuild Huffman Codes using the frequencies (must use the same logic as comp)
+            Map<Character, String> huffmanCodes = new HashMap<>();
+            assignHuffmanCodes(frequencies, huffmanCodes);
 
-        // Convert bytes to binary string
-        StringBuilder encodedData = new StringBuilder();
-        for (int i = 0; i < encodedBytes.size(); i++) {
-            byte b = encodedBytes.get(i);
-            // Convert byte to 8-bit binary string, ensuring leading zeros are kept
-            // `b & 0xFF` treats the byte as an unsigned value.
-            String byteStr = String.format("%8s", Integer.toBinaryString(b & 0xFF)).replace(' ', '0');
+            // Create the reverse map for decoding (Code -> Character)
+            Map<String, Character> huffmanCodeToChar = new HashMap<>();
+            for (Map.Entry<Character, String> entry : huffmanCodes.entrySet()) {
+                huffmanCodeToChar.put(entry.getValue(), entry.getKey());
+            }
 
-            if (i == encodedBytes.size() - 1 && padding > 0) {
-                // Remove the padding zeros that were added to the last byte during compression
-                if (byteStr.length() >= padding) {
-                    byteStr = byteStr.substring(0, byteStr.length() - padding);
+            // Decode data by traversing the compressed bits
+            StringBuilder decodedData = new StringBuilder();
+            String currentCode = "";
+
+            for (int i = 0; i < compressedBits.length(); i++) {
+                currentCode += compressedBits.charAt(i);
+                if (huffmanCodeToChar.containsKey(currentCode)) {
+                    char decodedChar = huffmanCodeToChar.get(currentCode);
+                    decodedData.append(decodedChar);
+                    currentCode = ""; // Reset for the next character
                 }
             }
-            encodedData.append(byteStr);
-        }
-        String compressedBits = encodedData.toString();
-        // #endregion
 
-        // #region 3. Rebuild Huffman Codes and Decode
+            // #endregion
 
-        // Rebuild Huffman Codes using the frequencies (must use the same logic as comp)
-        Map<Character, String> huffmanCodes = new HashMap<>();
-        assignHuffmanCodes(frequencies, huffmanCodes);
+            // #region 4. Write Decoded Data - THE CRITICAL FIX
 
-        // Create the reverse map for decoding (Code -> Character)
-        Map<String, Character> huffmanCodeToChar = new HashMap<>();
-        for (Map.Entry<Character, String> entry : huffmanCodes.entrySet()) {
-            huffmanCodeToChar.put(entry.getValue(), entry.getKey());
-        }
-
-        // Decode data by traversing the compressed bits
-        StringBuilder decodedData = new StringBuilder();
-        String currentCode = "";
-
-        for (int i = 0; i < compressedBits.length(); i++) {
-            currentCode += compressedBits.charAt(i);
-            if (huffmanCodeToChar.containsKey(currentCode)) {
-                char decodedChar = huffmanCodeToChar.get(currentCode);
-                decodedData.append(decodedChar);
-                currentCode = ""; // Reset for the next character
+            String finalOutput = decodedData.toString();
+            for (int i = 0; i < finalOutput.length(); i++) {
+                // **CRITICAL FIX:** Write the decoded character as a single byte (0-255).
+                // This reverses the original reading: byte -> char
+                // and avoids the platform's default encoding from turning one character
+                // into multiple bytes (which causes size inflation/corruption).
+                fos.write(finalOutput.charAt(i));
             }
+
+            // #endregion
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
-        // #endregion
-
-        // #region 4. Write Decoded Data
-
-        // Write the decoded characters to the result file.
-        fos.write(decodedData.toString().getBytes());
-        System.out.println("done");
-
-        // #endregion
-
-    } catch (Exception e) {
-        e.printStackTrace();
-    }
         // TODO: implement the reverse-engineered version of the compression code
     }
 
