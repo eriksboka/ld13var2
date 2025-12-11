@@ -1,113 +1,211 @@
-// 251RDB074 Ēriks Boka
-// 241RMB016 Sofja Spicina
+// 251RDB074 Ēriks Boka 7
+// 241RMB016 Sofja Spicina 7
 
+//#region Proj. Info.
+/*
+Huffman Encoding Algorithm without using custom Node class + no PriorityQueue
+
+// Pseudo code / algorithm's step by step explanation:
+    // step 1: calculate the frequency of each symbol
+    // - create a hashmap to asign the symbol and it's frequency (in times how much
+    // it appeared throughout the file)
+
+    // step 2: pick two lowest frequencies from the hashmap, the sum of these will
+    // be its parent 'node'
+    // - sum smallest value 1 and smallest value 2 entires in the hashmap, delete
+    // them from the hashmap and add their parent's summed up frequency instead
+
+    // step 3: loop for every possible pair of smallest entries to the map until
+    // only 1 entry will stay
+    // - the root node of the tree will be the total number of symbol containing in
+    // the text we're compressing
+    // - assign every smallest frequency (of the pair) the value of 0, and the
+    // largest (of the pair) - 1
+
+    // step 4: assign each symbol from the hashmap it's new value - read down from
+    // the root to the "leaf" of the huffman's tree we've created
+
+    sources: 
+    https://www.youtube.com/watch?v=21_bJLB7gyU - Huffman Coding Algorithm Explained and Implemented in Java | Data Compression | Geekific
+    https://www.youtube.com/watch?v=zSsTG3Flo-I - Java How-To : Huffman Encoding (Part I)
+    https://www.w3schools.com/dsa/dsa_ref_huffman_coding.php - Data Structures and Algorithms: Huffman Coding
+    https://www.geeksforgeeks.org/dsa/text-file-compression-and-decompression-using-huffman-coding/ - ext File Compression And Decompression Using Huffman Coding
+    https://www.geeksforgeeks.org/java/huffman-coding-java/ - Huffman Coding Java
+*/
+//#endregion
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 public class Main {
 
-    public static void main(String[] args) {
-        Scanner sc = new Scanner(System.in);
-        String choiseStr;
-        String sourceFile, resultFile, firstFile, secondFile;
-
-        loop: while (true) {
-
-            choiseStr = sc.next();
-
-            switch (choiseStr) {
-                case "comp":
-                    System.out.print("source file name: ");
-                    sourceFile = sc.next();
-                    System.out.print("archive name: ");
-                    resultFile = sc.next();
-                    comp(sourceFile, resultFile);
-                    break;
-                case "decomp":
-                    System.out.print("archive name: ");
-                    sourceFile = sc.next();
-                    System.out.print("file name: ");
-                    resultFile = sc.next();
-                    decomp(sourceFile, resultFile);
-                    break;
-                case "size":
-                    System.out.print("file name: ");
-                    sourceFile = sc.next();
-                    size(sourceFile);
-                    break;
-                case "equal":
-                    System.out.print("first file name: ");
-                    firstFile = sc.next();
-                    System.out.print("second file name: ");
-                    secondFile = sc.next();
-                    System.out.println(equal(firstFile, secondFile));
-                    break;
-                case "about":
-                    about();
-                    break;
-                case "exit":
-                    break loop;
-            }
-        }
-
-        sc.close();
+    public static void about() {
+        System.out.println("251RDB074 Ēriks Boka 7");
+        System.out.println("241RMB016 Sofja Spicina 7");
     }
 
+    // #region Alg. Components
+    public static int findSmallest(List<Map.Entry<Character, Integer>> frequencyList) {
+        int smallest = 0;
+        for (int i = 1; i < frequencyList.size(); i++) {
+            if (frequencyList.get(i).getValue() < frequencyList.get(smallest).getValue()) {
+                smallest = i;
+            }
+        }
+        return smallest;
+    }
+
+    private static void buildCodes(char node, String code, Map<Character, Character> leftChild,
+            Map<Character, Character> rightChild, Map<Character, String> leftCode, Map<Character, String> rightCode,
+            Map<Character, String> huffmanCodes, java.util.Set<Character> originalChars) {
+
+        if (originalChars.contains(node)) { // if leaf node
+            huffmanCodes.put(node, code.isEmpty() ? "0" : code);
+            return;
+        }
+
+        if (leftChild.containsKey(node)) { // if left internal node
+            buildCodes(leftChild.get(node), code + leftCode.get(node), // appends 0
+                    leftChild, rightChild, leftCode, rightCode, huffmanCodes, originalChars);
+        }
+
+        if (rightChild.containsKey(node)) { // if right internal node
+            buildCodes(rightChild.get(node), code + rightCode.get(node), // appends 1
+                    leftChild, rightChild, leftCode, rightCode, huffmanCodes, originalChars);
+        }
+    }
+
+    private static void assignHuffmanCodes(Map<Character, Integer> frequencies, Map<Character, String> huffmanCodes) {
+        if (frequencies.size() == 1) {
+            for (Character symbol : frequencies.keySet()) {
+                huffmanCodes.put(symbol, "0");
+            }
+            return;
+        }
+
+        List<Map.Entry<Character, Integer>> nodes = new ArrayList<>(frequencies.entrySet());
+
+        Map<Character, Character> leftChild = new HashMap<>();
+        Map<Character, String> leftCode = new HashMap<>();
+
+        Map<Character, Character> rightChild = new HashMap<>();
+        Map<Character, String> rightCode = new HashMap<>();
+
+        char internalNodeId = '\uFFFF'; // id of the initial internal node (each node - they;re subtracting by 1 for
+                                        // each next node)
+
+        while (nodes.size() > 1) { // while not only root node stays
+
+            // delete smallest nodes
+            int firstSmallest = findSmallest(nodes);
+            Map.Entry<Character, Integer> first = nodes.remove(firstSmallest);
+            int secondSmallest = findSmallest(nodes);
+            Map.Entry<Character, Integer> second = nodes.remove(secondSmallest);
+
+            // create parent node, which is a sum of samllest nodes' frequencies
+            int combinedFreq = first.getValue() + second.getValue();
+            char parentId = internalNodeId--;
+
+            // store children in childs maps and their corresponding codes in codes map
+            leftChild.put(parentId, first.getKey());
+            rightChild.put(parentId, second.getKey());
+            leftCode.put(parentId, "0");
+            rightCode.put(parentId, "1");
+
+            // add parent to list instead of 2 deleted children
+            nodes.add(new HashMap.SimpleEntry<>(parentId, combinedFreq));
+        }
+
+        // root is the last remaining node - it holds max amount of data stored in the
+        // file compressing
+        char root = nodes.get(0).getKey();
+
+        buildCodes(root, "", leftChild, rightChild, leftCode, rightCode, huffmanCodes, frequencies.keySet());
+    }
+    // #endregion
+
     public static void comp(String sourceFile, String resultFile) {
+        try {
+            FileInputStream fis = new FileInputStream(sourceFile);
+            StringBuilder content = new StringBuilder();
+            int data;
+            while ((data = fis.read()) != -1) {
+                content.append((char) data);
+            }
+            fis.close();
 
-//         FUNCTION compressRLE(InputString)
-//     // InputString is the HTML content to be compressed.
-//     // We will build the CompressedOutput character by character.
+            char[] symbols = content.toString().toCharArray();
 
-//     IF InputString IS NULL OR length(InputString) == 0 THEN
-//         RETURN InputString
-//     END IF
+            // Calculate frequencies
+            Map<Character, Integer> frequencies = new LinkedHashMap<>();
+            for (char symbol : symbols) {
+                frequencies.put(symbol, frequencies.getOrDefault(symbol, 0) + 1);
+            }
 
-//     // Initialize the structure that will hold the compressed data.
-//     // In Java, you'd use a StringBuilder (part of java.lang) or a char array.
-//     Initialize CompressedOutput
+            // Build Huffman codes
+            Map<Character, String> huffmanCodes = new HashMap<>();
+            assignHuffmanCodes(frequencies, huffmanCodes);
 
-//     // Initialize variables to track the current run
-//     SET CurrentCharacter = first character of InputString
-//     SET RunLength = 1
+            // Encode data
+            StringBuilder encodedData = new StringBuilder();
+            for (char symbol : symbols) {
+                encodedData.append(huffmanCodes.get(symbol));
+            }
 
-//     // Start iteration from the second character (index 1)
-//     FOR Index FROM 1 TO length(InputString) - 1 DO
-//         SET NextCharacter = character at Index in InputString
+            FileOutputStream fos = new FileOutputStream(resultFile);
 
-//         IF NextCharacter IS EQUAL TO CurrentCharacter THEN
-//             // Case 1: The run continues
-//             INCREMENT RunLength
-//         ELSE
-//             // Case 2: The run has ended
+            // #region Binary header 
+            // (stores unique symbols)
 
-//             // A. Append the run length (count) to the output
-//             //    (You'll need a way to convert the integer RunLength to a string/char)
-//             APPEND RunLength TO CompressedOutput
+            // Write frequency table size
+            fos.write((frequencies.size() >> 8) & 0xFF);
+            fos.write(frequencies.size() & 0xFF);
 
-//             // B. Append the character to the output
-//             APPEND CurrentCharacter TO CompressedOutput
+            // Write frequency table
+            for (Map.Entry<Character, Integer> entry : frequencies.entrySet()) {
+                fos.write((entry.getKey() >> 8) & 0xFF);
+                fos.write(entry.getKey() & 0xFF);
+                fos.write((entry.getValue() >> 24) & 0xFF);
+                fos.write((entry.getValue() >> 16) & 0xFF);
+                fos.write((entry.getValue() >> 8) & 0xFF);
+                fos.write(entry.getValue() & 0xFF);
+            }
+            // #endregion
 
-//             // C. Start a new run
-//             SET CurrentCharacter = NextCharacter
-//             SET RunLength = 1
-//         END IF
-//     END FOR
+            //#region binary body
+            // "allocate space" for the byte when bits we've got will be converted to bytes
+            // Write number of padding bits
+            String bits = encodedData.toString();
+            int padding = 8 - (bits.length() % 8);
+            if (padding == 8)
+                padding = 0;
+            fos.write(padding);
 
-//     // --- Handling the Final Run ---
-//     // The loop finishes after processing the last character, but the final
-//     // run's length and character haven't been appended yet.
+            // Convert binary string to bytes
+            for (int i = 0; i < bits.length(); i += 8) {
+                String byteStr = bits.substring(i, Math.min(i + 8, bits.length()));
+                while (byteStr.length() < 8) {
+                    byteStr += "0"; // Add padding
+                }
+                int byteValue = Integer.parseInt(byteStr, 2);
+                fos.write(byteValue);
+            }
 
-//     APPEND RunLength TO CompressedOutput
-//     APPEND CurrentCharacter TO CompressedOutput
-
-//     RETURN CompressedOutput
-// END FUNCTION
+            //#endregion
+            fos.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     public static void decomp(String sourceFile, String resultFile) {
-
+        // TODO: implement the reverse-engineered version of the compression code
     }
 
     public static void size(String sourceFile) {
@@ -154,8 +252,50 @@ public class Main {
         }
     }
 
-    public static void about() {
-        System.out.println("251RDB074 Ēriks Boka");
-        System.out.println("241RMB016 Sofja Spicina");
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+        String choiseStr;
+        String sourceFile, resultFile, firstFile, secondFile;
+
+        loop: while (true) {
+
+            choiseStr = sc.next();
+
+            switch (choiseStr) {
+                case "comp":
+                    System.out.print("source file name: ");
+                    sourceFile = sc.next();
+                    System.out.print("archive name: ");
+                    resultFile = sc.next();
+                    comp(sourceFile, resultFile);
+                    break;
+                case "decomp":
+                    System.out.print("archive name: ");
+                    sourceFile = sc.next();
+                    System.out.print("file name: ");
+                    resultFile = sc.next();
+                    decomp(sourceFile, resultFile);
+                    break;
+                case "size":
+                    System.out.print("file name: ");
+                    sourceFile = sc.next();
+                    size(sourceFile);
+                    break;
+                case "equal":
+                    System.out.print("first file name: ");
+                    firstFile = sc.next();
+                    System.out.print("second file name: ");
+                    secondFile = sc.next();
+                    System.out.println(equal(firstFile, secondFile));
+                    break;
+                case "about":
+                    about();
+                    break;
+                case "exit":
+                    break loop;
+            }
+        }
+
+        sc.close();
     }
 }
